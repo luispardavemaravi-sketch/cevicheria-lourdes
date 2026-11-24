@@ -23,8 +23,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import pe.cevicherialourdes.shared.domain.exception.AccesoBloqueadoException;
 import pe.cevicherialourdes.shared.domain.exception.ConflictoNegocioException;
 import pe.cevicherialourdes.shared.domain.exception.DomainException;
+import pe.cevicherialourdes.shared.domain.exception.NoAutenticadoException;
 import pe.cevicherialourdes.shared.domain.exception.RecursoNoEncontradoException;
 import pe.cevicherialourdes.shared.domain.exception.ReglaNegocioException;
 
@@ -58,6 +60,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ReglaNegocioException.class)
     ResponseEntity<ProblemDetail> reglaNegocio(ReglaNegocioException ex) {
         return negocio(HttpStatus.UNPROCESSABLE_ENTITY, ex);
+    }
+
+    @ExceptionHandler(NoAutenticadoException.class)
+    ResponseEntity<ProblemDetail> noAutenticado(NoAutenticadoException ex) {
+        return negocio(HttpStatus.UNAUTHORIZED, ex);
+    }
+
+    @ExceptionHandler(AccesoBloqueadoException.class)
+    ResponseEntity<ProblemDetail> bloqueado(AccesoBloqueadoException ex) {
+        return negocio(HttpStatus.LOCKED, ex);
     }
 
     // ---- Entrada invalida -----------------------------------------------------------------

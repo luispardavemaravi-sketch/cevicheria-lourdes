@@ -7,7 +7,8 @@ import java.util.Objects;
  * (ej. MESA_OCUPADA) que el frontend puede usar, y la subclase indica la categoria del error.
  */
 public abstract sealed class DomainException extends RuntimeException
-        permits RecursoNoEncontradoException, ConflictoNegocioException, ReglaNegocioException {
+        permits RecursoNoEncontradoException, ConflictoNegocioException, ReglaNegocioException,
+                NoAutenticadoException, AccesoBloqueadoException {
 
     private final String codigo;
 

@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: hola123
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       TZ: UTC
     ports:
       - "127.0.0.1:5432:5432"     # solo accesible desde tu PC, no desde la red
@@ -27,6 +27,9 @@ services:
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PIN: ${ADMIN_PIN}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

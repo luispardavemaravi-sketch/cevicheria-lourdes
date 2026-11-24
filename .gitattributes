@@ -1,0 +1,5 @@
+# El wrapper de Maven debe conservar sus finales de linea en cualquier SO (CI corre en Linux)
+api/mvnw      text eol=lf
+*.sh          text eol=lf
+api/mvnw.cmd  text eol=crlf
+*.cmd         text eol=crlf

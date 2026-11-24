@@ -1,0 +1,30 @@
+package pe.cevicherialourdes.carta.domain.port.in;
+
+import java.math.BigDecimal;
+
+import pe.cevicherialourdes.carta.domain.model.Categoria;
+import pe.cevicherialourdes.carta.domain.model.Producto;
+import pe.cevicherialourdes.shared.domain.model.Pagina;
+import pe.cevicherialourdes.shared.domain.model.Paginacion;
+
+/** HU-03: CRUD de productos (la baja es logica, via actualizar con activo = false). */
+public interface GestionarProductosUseCase {
+
+    /**
+     * @param requiereCocina null = valor por defecto de la categoria
+     * @param activo         null = true
+     */
+    record DatosProducto(String nombre, Categoria categoria, BigDecimal precio, Boolean requiereCocina,
+                         Boolean activo) {
+    }
+
+    /** @param categoria null = todas */
+    record FiltroProductos(Categoria categoria, boolean incluirInactivos) {
+    }
+
+    Producto crear(DatosProducto datos);
+
+    Producto actualizar(Long id, DatosProducto datos);
+
+    Pagina<Producto> listar(FiltroProductos filtro, Paginacion paginacion);
+}

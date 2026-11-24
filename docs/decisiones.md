@@ -18,3 +18,12 @@ Una línea por decisión no obvia. Formato: `[historia] decisión — por qué`.
 - [HU-01] Mapeo entidad↔dominio a mano (`UsuarioEntity.desde/aDominio`); MapStruct solo para DTO web — el dominio no tiene setters ni constructor público y MapStruct no puede usar `reconstituir` sin configuración extra.
 - [HU-01] Pruebas `*IT` heredan de `IntegracionBase`: un solo PostgreSQL para toda la corrida — arrancar uno por clase haría el build cada vez más lento; cada prueba usa datos propios.
 - [HU-01] La configuración de pruebas va en `src/test/resources/config/application.yml` — se suma al `application.yml` principal (no lo reemplaza) y aplica también a `@WebMvcTest`.
+- [HU-03] Presentaciones (HU-04) y acompañamientos (HU-05) viajan dentro del cuerpo de POST/PUT `/productos`; sin rutas nuevas — decidido con el usuario: la tabla de API solo tiene esas rutas.
+- [HU-03] Baja de producto = PUT con `activo=false` (lógica); `GET ?incluirInactivos=true` las muestra — decidido con el usuario: `detalle_pedido` referencia productos y no hay DELETE en la tabla de API.
+- [HU-03] La categoría no se puede cambiar (422 `CATEGORIA_NO_MODIFICABLE`) — decidido con el usuario: una BEBIDA con presentaciones no puede volverse PLATO sin precio.
+- [HU-03] BEBIDA no lleva precio propio (422 `PRECIO_EN_PRESENTACION`); PLATO y TAPER exigen precio > 0 — así lo modela el CHECK de V1 (`precio` NULL solo en BEBIDA) y HU-04 pone el precio en la presentación.
+- [HU-03] `requiereCocina` es opcional; por defecto true en PLATO y false en BEBIDA/TAPER (RN-06) — permite un plato que no pase por cocina sin obligar a enviarlo siempre.
+- [HU-03] Nombre único sin importar mayúsculas ni espacios repetidos: validado en el caso de uso (409) y con el índice único `lower(nombre)` en V3 — el chequeo previo no evita la carrera entre dos altas simultáneas; el índice sí.
+- [HU-03] `Dinero` (record, escala 2, HALF_UP) en `shared.domain.model`; `equals` por valor porque normaliza la escala al construir — `15.0` y `15.00` son el mismo monto.
+- [HU-03] El controller recibe `page`/`size` como `@RequestParam` y arma `Paginacion` (dominio, máx. 100); `Pageable` solo vive en el adaptador de persistencia — `ArchitectureTest` prohíbe `org.springframework.data` en `adapter.in.web`, y la regla 8 (nunca `findAll()` sin límite) se cumple igual.
+- [HU-03] Listados devuelven `PaginaResponse` propio, no `Page` de Spring — la serialización de `PageImpl` no es estable entre versiones de Spring Data y no debe filtrarse al contrato de la API.

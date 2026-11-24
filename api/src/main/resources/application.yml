@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: cevicheria-lourdes-api
+  profiles:
+    default: dev
+  autoconfigure:
+    # Sin usuario en memoria generado por Spring: los usuarios viven en la tabla "usuario" (HU-01)
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cevicheria}
+    username: ${DB_USER:cevicheria}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # el esquema lo maneja solo Flyway
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC          # se guarda en UTC; se muestra en hora de Lima (ClockConfig)
+  flyway:
+    enabled: true
+  jackson:
+    time-zone: America/Lima
+    default-property-inclusion: non_null
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true

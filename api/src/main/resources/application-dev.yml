@@ -1,0 +1,9 @@
+# Perfil local. Las credenciales salen del archivo .env de la raiz (ver .env.example).
+logging:
+  level:
+    pe.cevicherialourdes: DEBUG
+    org.flywaydb: INFO
+
+spring:
+  jpa:
+    show-sql: false

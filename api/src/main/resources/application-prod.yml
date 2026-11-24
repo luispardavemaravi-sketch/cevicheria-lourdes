@@ -1,0 +1,19 @@
+# Perfil de produccion (EC2). Sin valores por defecto: si falta una variable, la app no arranca.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+server:
+  forward-headers-strategy: framework   # detras de Nginx
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: INFO

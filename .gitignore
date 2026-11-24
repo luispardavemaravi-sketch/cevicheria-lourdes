@@ -1,0 +1,22 @@
+# Secretos
+.env
+*.env
+!.env.example
+application-local.yml
+
+# Java / Maven
+api/target/
+*.class
+*.log
+
+# Angular / Node
+web/node_modules/
+web/dist/
+web/.angular/
+
+# IDE y sistema
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

@@ -24,7 +24,7 @@ class ProductoPresentacionesTest {
                 Presentacion.reconstituir(1L, "Personal", Dinero.de("2.00"), true),
                 Presentacion.reconstituir(2L, "1 L", Dinero.de("6.00"), true),
                 Presentacion.reconstituir(3L, "Gordita", Dinero.de("4.00"), false)));
-        return Producto.reconstituir(7L, "Inca Kola", Categoria.BEBIDA, null, false, true, true, existentes);
+        return Producto.reconstituir(7L, "Inca Kola", Categoria.BEBIDA, null, false, true, true, existentes, List.of());
     }
 
     @Test

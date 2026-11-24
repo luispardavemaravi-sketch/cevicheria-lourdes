@@ -164,6 +164,60 @@ class ProductosIT extends IntegracionBase {
                 .containsEntry("code", "PRESENTACION_SOLO_EN_BEBIDA");
     }
 
+    // ---- HU-05: acompanamientos ---------------------------------------------------------------
+
+    @Test
+    void laCartaInicialMuestraLosAcompanamientosDelCeviche() {
+        Map<String, Object> ceviche = listar(tokenDe("MOZO"), "?categoria=PLATO&size=100").stream()
+                .filter(p -> "Ceviche de pescado".equals(p.get("nombre"))).findFirst().orElseThrow();
+
+        assertThat((List<Map<String, Object>>) ceviche.get("acompanamientos")).extracting(a -> a.get("nombre"))
+                .containsExactly("Camote", "Cebolla", "Chicharrón", "Lechuga");
+    }
+
+    @Test
+    void plato_reusaAcompanamientosExistentesSinImportarMayusculas_yCreaLosNuevos() {
+        String token = tokenAdmin();
+        String nuevo = unico("Yuca");
+        Integer catalogoAntes = jdbc.queryForObject("SELECT count(*) FROM acompanamiento", Integer.class);
+
+        ResponseEntity<Map> r = crear(token, Map.of("nombre", unico("Pescado frito"), "categoria", "PLATO",
+                "precio", 18, "acompanamientos", List.of("camote", nuevo)));
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat((List<Map<String, Object>>) r.getBody().get("acompanamientos")).extracting(a -> a.get("nombre"))
+                .containsExactly("Camote", nuevo);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM acompanamiento", Integer.class))
+                .isEqualTo(catalogoAntes + 1);
+    }
+
+    @Test
+    void editar_reemplazaLosAcompanamientosDelPlato() {
+        String token = tokenAdmin();
+        String nombre = unico("Chicharron de pota");
+        Number id = (Number) crear(token, Map.of("nombre", nombre, "categoria", "PLATO", "precio", 12,
+                "acompanamientos", List.of("Camote", "Cebolla", "Cancha"))).getBody().get("id");
+
+        ResponseEntity<Map> r = llamar(HttpMethod.PUT, URL + "/" + id, token, Map.of("nombre", nombre,
+                "categoria", "PLATO", "precio", 12, "activo", true, "acompanamientos", List.of("Cancha")), Map.class);
+
+        assertThat((List<Map<String, Object>>) r.getBody().get("acompanamientos")).extracting(a -> a.get("nombre"))
+                .containsExactly("Cancha");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM producto_acompanamiento WHERE producto_id = ?",
+                Integer.class, id.longValue())).isEqualTo(1);
+    }
+
+    @Test
+    void taperConAcompanamientos_422_yNoDejaBasuraEnElCatalogo() {
+        String nuevo = unico("Ají");
+        ResponseEntity<Map> r = crear(tokenAdmin(), Map.of("nombre", unico("Taper grande"), "categoria", "TAPER",
+                "precio", 2, "acompanamientos", List.of(nuevo)));
+
+        assertThat(r.getBody()).containsEntry("code", "ACOMPANAMIENTO_SOLO_EN_PLATO");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM acompanamiento WHERE nombre = ?", Integer.class, nuevo))
+                .isZero();
+    }
+
     @Test
     void listado_respetaElTamanoDePagina() {
         ResponseEntity<Map> r = llamar(HttpMethod.GET, URL + "?size=2&page=0", tokenAdmin(), null, Map.class);

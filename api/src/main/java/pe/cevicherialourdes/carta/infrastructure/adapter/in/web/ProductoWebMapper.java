@@ -3,9 +3,11 @@ package pe.cevicherialourdes.carta.infrastructure.adapter.in.web;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import pe.cevicherialourdes.carta.domain.model.Acompanamiento;
 import pe.cevicherialourdes.carta.domain.model.Presentacion;
 import pe.cevicherialourdes.carta.domain.model.Producto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.DatosProducto;
+import pe.cevicherialourdes.carta.infrastructure.adapter.in.web.ProductoResponse.AcompanamientoResponse;
 import pe.cevicherialourdes.carta.infrastructure.adapter.in.web.ProductoResponse.PresentacionResponse;
 
 @Mapper
@@ -20,4 +22,6 @@ public interface ProductoWebMapper {
 
     @Mapping(target = "precio", source = "precio.monto")
     PresentacionResponse aResponse(Presentacion presentacion);
+
+    AcompanamientoResponse aResponse(Acompanamiento acompanamiento);
 }

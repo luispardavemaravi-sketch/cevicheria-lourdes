@@ -19,9 +19,11 @@ class ProductoPersistenceAdapter implements ProductoRepositorio {
     private static final Sort POR_NOMBRE = Sort.by("nombre").and(Sort.by("id"));
 
     private final ProductoJpaRepository jpa;
+    private final AcompanamientoJpaRepository acompanamientos;
 
-    ProductoPersistenceAdapter(ProductoJpaRepository jpa) {
+    ProductoPersistenceAdapter(ProductoJpaRepository jpa, AcompanamientoJpaRepository acompanamientos) {
         this.jpa = jpa;
+        this.acompanamientos = acompanamientos;
     }
 
     @Override
@@ -36,7 +38,7 @@ class ProductoPersistenceAdapter implements ProductoRepositorio {
 
     @Override
     public Producto guardar(Producto producto) {
-        return jpa.save(ProductoEntity.desde(producto)).aDominio();
+        return jpa.save(ProductoEntity.desde(producto, acompanamientos::getReferenceById)).aDominio();
     }
 
     @Override

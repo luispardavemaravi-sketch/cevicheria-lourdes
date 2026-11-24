@@ -7,9 +7,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pe.cevicherialourdes.carta.domain.model.Acompanamiento;
 import pe.cevicherialourdes.carta.domain.model.DefinicionPresentacion;
 import pe.cevicherialourdes.carta.domain.model.Producto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase;
+import pe.cevicherialourdes.carta.domain.port.out.AcompanamientoRepositorio;
 import pe.cevicherialourdes.carta.domain.port.out.ProductoRepositorio;
 import pe.cevicherialourdes.shared.domain.exception.ConflictoNegocioException;
 import pe.cevicherialourdes.shared.domain.exception.RecursoNoEncontradoException;
@@ -23,17 +25,24 @@ public class GestionarProductosService implements GestionarProductosUseCase {
     private static final Logger log = LoggerFactory.getLogger(GestionarProductosService.class);
 
     private final ProductoRepositorio repositorio;
+    private final AcompanamientoRepositorio acompanamientos;
 
-    public GestionarProductosService(ProductoRepositorio repositorio) {
+    public GestionarProductosService(ProductoRepositorio repositorio, AcompanamientoRepositorio acompanamientos) {
         this.repositorio = repositorio;
+        this.acompanamientos = acompanamientos;
     }
 
+    /**
+     * Si una regla falla despues de crear acompanamientos nuevos en el catalogo, el rollback los deshace
+     * (todas las excepciones de dominio son RuntimeException).
+     */
     @Override
     @Transactional
     public Producto crear(DatosProducto datos) {
         Producto producto = Producto.crear(datos.nombre(), datos.categoria(), dinero(datos), datos.requiereCocina(),
                 presentaciones(datos));
         exigirNombreLibre(producto.getNombre(), null);
+        producto.asignarAcompanamientos(resolverAcompanamientos(datos));
         Producto guardado = repositorio.guardar(producto);
         log.info("Producto {} creado ({})", guardado.getId(), guardado.getCategoria());
         return guardado;
@@ -48,6 +57,7 @@ public class GestionarProductosService implements GestionarProductosUseCase {
         exigirNombreLibre(Producto.normalizarNombre(datos.nombre()), id);
         producto.actualizar(datos.nombre(), datos.categoria(), dinero(datos), datos.requiereCocina(),
                 datos.activo() == null || datos.activo(), presentaciones(datos));
+        producto.asignarAcompanamientos(resolverAcompanamientos(datos));
         Producto guardado = repositorio.guardar(producto);
         log.info("Producto {} actualizado (activo={})", id, guardado.isActivo());
         return guardado;
@@ -67,6 +77,11 @@ public class GestionarProductosService implements GestionarProductosUseCase {
 
     private static Dinero dinero(DatosProducto datos) {
         return datos.precio() == null ? null : Dinero.de(datos.precio());
+    }
+
+    private List<Acompanamiento> resolverAcompanamientos(DatosProducto datos) {
+        List<String> nombres = Acompanamiento.normalizarNombres(datos.acompanamientos());
+        return nombres.isEmpty() ? List.of() : acompanamientos.obtenerOCrear(nombres);
     }
 
     private static List<DefinicionPresentacion> presentaciones(DatosProducto datos) {

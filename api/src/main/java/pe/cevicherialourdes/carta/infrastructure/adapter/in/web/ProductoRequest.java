@@ -29,5 +29,9 @@ public record ProductoRequest(
 
         @Schema(description = "Solo BEBIDA y obligatorio en ella (HU-04). En PUT es la lista completa: "
                 + "las que no vengan quedan inactivas")
-        @Size(max = 20) List<@Valid @NotNull PresentacionRequest> presentaciones) {
+        @Size(max = 20) List<@Valid @NotNull PresentacionRequest> presentaciones,
+
+        @Schema(example = "[\"Camote\", \"Cebolla\"]", description = "Solo PLATO (HU-05). Por nombre: si no existe "
+                + "en el catalogo se crea. En PUT es la lista completa; si se omite, el plato queda sin acompanamientos")
+        @Size(max = 30) List<@NotBlank @Size(max = 40) String> acompanamientos) {
 }

@@ -2,7 +2,10 @@ package pe.cevicherialourdes.carta.infrastructure.adapter.out.persistence;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -12,6 +15,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import pe.cevicherialourdes.carta.domain.model.Categoria;
@@ -52,10 +58,18 @@ class ProductoEntity {
     @OneToMany(mappedBy = "producto", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<PresentacionEntity> presentaciones = new ArrayList<>();
 
+    /** HU-05. Sin cascada: el catalogo de acompanamientos se administra aparte. */
+    @ManyToMany
+    @JoinTable(name = "producto_acompanamiento",
+            joinColumns = @JoinColumn(name = "producto_id"),
+            inverseJoinColumns = @JoinColumn(name = "acompanamiento_id"))
+    private Set<AcompanamientoEntity> acompanamientos = new HashSet<>();
+
     protected ProductoEntity() {
     }
 
-    static ProductoEntity desde(Producto p) {
+    /** @param referencia convierte un id de acompanamiento en una referencia gestionada por JPA */
+    static ProductoEntity desde(Producto p, Function<Long, AcompanamientoEntity> referencia) {
         ProductoEntity e = new ProductoEntity();
         e.id = p.getId();
         e.nombre = p.getNombre();
@@ -65,12 +79,14 @@ class ProductoEntity {
         e.disponible = p.isDisponible();
         e.activo = p.isActivo();
         p.getPresentaciones().forEach(pr -> e.presentaciones.add(PresentacionEntity.desde(pr, e)));
+        p.getAcompanamientos().forEach(a -> e.acompanamientos.add(referencia.apply(a.id())));
         return e;
     }
 
     Producto aDominio() {
         return Producto.reconstituir(id, nombre, categoria, precio == null ? null : Dinero.de(precio),
                 requiereCocina, disponible, activo,
-                presentaciones.stream().map(PresentacionEntity::aDominio).toList());
+                presentaciones.stream().map(PresentacionEntity::aDominio).toList(),
+                acompanamientos.stream().map(AcompanamientoEntity::aDominio).toList());
     }
 }

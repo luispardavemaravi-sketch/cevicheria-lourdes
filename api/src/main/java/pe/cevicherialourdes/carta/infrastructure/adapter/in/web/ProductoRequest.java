@@ -1,8 +1,10 @@
 package pe.cevicherialourdes.carta.infrastructure.adapter.in.web;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -23,5 +25,9 @@ public record ProductoRequest(
         Boolean requiereCocina,
 
         @Schema(description = "Solo en PUT. false = baja logica. Si se omite: true")
-        Boolean activo) {
+        Boolean activo,
+
+        @Schema(description = "Solo BEBIDA y obligatorio en ella (HU-04). En PUT es la lista completa: "
+                + "las que no vengan quedan inactivas")
+        @Size(max = 20) List<@Valid @NotNull PresentacionRequest> presentaciones) {
 }

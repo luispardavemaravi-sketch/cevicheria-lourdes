@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import pe.cevicherialourdes.carta.domain.model.Categoria;
 import pe.cevicherialourdes.carta.domain.model.Producto;
+import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.DatosPresentacion;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.DatosProducto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.FiltroProductos;
 import pe.cevicherialourdes.carta.domain.port.out.ProductoRepositorio;
@@ -35,7 +36,7 @@ class GestionarProductosServiceTest {
     @InjectMocks GestionarProductosService servicio;
 
     private static DatosProducto ceviche(String precio) {
-        return new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal(precio), null, null);
+        return new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal(precio), null, null, null);
     }
 
     @Test
@@ -71,7 +72,7 @@ class GestionarProductosServiceTest {
 
     @Test
     void actualizar_noChocaConsigoMismoPeroSiConOtro() {
-        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true);
+        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true, List.of());
         when(repositorio.buscarPorId(5L)).thenReturn(Optional.of(existente));
         when(repositorio.existeNombre("Ceviche mixto", 5L)).thenReturn(true);
 
@@ -82,16 +83,29 @@ class GestionarProductosServiceTest {
 
     @Test
     void actualizar_aplicaCambiosYGuarda() {
-        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true);
+        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true, List.of());
         when(repositorio.buscarPorId(5L)).thenReturn(Optional.of(existente));
         when(repositorio.existeNombre("Ceviche mixto", 5L)).thenReturn(false);
         when(repositorio.guardar(existente)).thenReturn(existente);
 
         Producto actualizado = servicio.actualizar(5L,
-                new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal("18.00"), true, false));
+                new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal("18.00"), true, false, null));
 
         assertThat(actualizado.getPrecio()).isEqualTo(Dinero.de("18"));
         assertThat(actualizado.isActivo()).isFalse();
+    }
+
+    @Test
+    void crear_bebidaConSusPresentaciones_hu04() {
+        when(repositorio.existeNombre("Chicha morada", null)).thenReturn(false);
+        when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Producto creado = servicio.crear(new DatosProducto("Chicha morada", Categoria.BEBIDA, null, null, null,
+                List.of(new DatosPresentacion("Vaso", new BigDecimal("3.50")),
+                        new DatosPresentacion("Jarra", new BigDecimal("12")))));
+
+        assertThat(creado.presentacionesActivas()).extracting(p -> p.getPrecio())
+                .containsExactly(Dinero.de("3.50"), Dinero.de("12.00"));
     }
 
     @Test

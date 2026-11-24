@@ -115,6 +115,55 @@ class ProductosIT extends IntegracionBase {
         assertThat(bebidas).extracting(b -> (String) b.get("nombre")).isSorted();
     }
 
+    // ---- HU-04: presentaciones --------------------------------------------------------------
+
+    @Test
+    void laCartaInicialMuestraLasPresentacionesDeIncaKolaOrdenadasPorPrecio() {
+        Map<String, Object> incaKola = listar(tokenDe("MOZO"), "?categoria=BEBIDA&size=100").stream()
+                .filter(b -> "Inca Kola".equals(b.get("nombre"))).findFirst().orElseThrow();
+
+        List<Map<String, Object>> presentaciones = (List<Map<String, Object>>) incaKola.get("presentaciones");
+        assertThat(presentaciones).extracting(p -> p.get("nombre"))
+                .containsExactly("Personal", "Gordita", "1 L", "1.5 L");
+        assertThat(presentaciones).allSatisfy(p -> assertThat(p.get("id")).isNotNull());
+    }
+
+    @Test
+    void bebida_seCreaConPresentaciones_yAlEditarLasQueSalenQuedanInactivas() {
+        String token = tokenAdmin();
+        String nombre = unico("Chicha");
+        ResponseEntity<Map> creada = crear(token, Map.of("nombre", nombre, "categoria", "BEBIDA",
+                "presentaciones", List.of(Map.of("nombre", "Vaso", "precio", 3.5),
+                                          Map.of("nombre", "Jarra", "precio", 12))));
+        assertThat(creada.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Number id = (Number) creada.getBody().get("id");
+        Number idVaso = (Number) ((List<Map<String, Object>>) creada.getBody().get("presentaciones")).get(0).get("id");
+
+        ResponseEntity<Map> editada = llamar(HttpMethod.PUT, URL + "/" + id, token, Map.of(
+                "nombre", nombre, "categoria", "BEBIDA", "activo", true,
+                "presentaciones", List.of(Map.of("nombre", "vaso", "precio", 4))), Map.class);
+
+        assertThat(editada.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> activas = (List<Map<String, Object>>) editada.getBody().get("presentaciones");
+        assertThat(activas).singleElement().satisfies(p -> {
+            assertThat(p.get("id")).isEqualTo(idVaso);        // misma fila: los pedidos viejos siguen apuntando bien
+            assertThat(((Number) p.get("precio")).doubleValue()).isEqualTo(4.0);
+        });
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM presentacion WHERE producto_id = ? AND activo = FALSE", Integer.class,
+                id.longValue())).isEqualTo(1);
+    }
+
+    @Test
+    void bebidaSinPresentaciones_422_yPlatoConPresentaciones_422() {
+        String token = tokenAdmin();
+        assertThat(crear(token, Map.of("nombre", unico("Emoliente"), "categoria", "BEBIDA")).getBody())
+                .containsEntry("code", "PRESENTACION_REQUERIDA");
+        assertThat(crear(token, Map.of("nombre", unico("Ronda"), "categoria", "PLATO", "precio", 40,
+                "presentaciones", List.of(Map.of("nombre", "Grande", "precio", 50)))).getBody())
+                .containsEntry("code", "PRESENTACION_SOLO_EN_BEBIDA");
+    }
+
     @Test
     void listado_respetaElTamanoDePagina() {
         ResponseEntity<Map> r = llamar(HttpMethod.GET, URL + "?size=2&page=0", tokenAdmin(), null, Map.class);

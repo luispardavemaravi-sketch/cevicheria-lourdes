@@ -27,6 +27,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import pe.cevicherialourdes.carta.domain.model.Categoria;
+import pe.cevicherialourdes.carta.domain.model.Presentacion;
 import pe.cevicherialourdes.carta.domain.model.Producto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.FiltroProductos;
@@ -51,7 +52,7 @@ class ProductoControllerTest {
     @MockitoBean GestionarProductosUseCase productos;
 
     private static Producto ceviche() {
-        return Producto.reconstituir(10L, "Ceviche mixto", Categoria.PLATO, Dinero.de("18"), true, true, true);
+        return Producto.reconstituir(10L, "Ceviche mixto", Categoria.PLATO, Dinero.de("18"), true, true, true, List.of());
     }
 
     // ---- POST -------------------------------------------------------------------------------
@@ -127,6 +128,48 @@ class ProductoControllerTest {
                 .content("{\"nombre\":\"Chicha\",\"categoria\":\"BEBIDA\",\"precio\":3}"))
            .andExpect(status().isUnprocessableEntity())
            .andExpect(jsonPath("$.code").value("PRECIO_EN_PRESENTACION"));
+    }
+
+    @Test
+    void crear_bebidaConPresentaciones_lasDevuelveConSuIdYPrecio_hu04() throws Exception {
+        Producto chicha = Producto.reconstituir(11L, "Chicha", Categoria.BEBIDA, null, false, true, true,
+                List.of(Presentacion.reconstituir(21L, "Vaso", Dinero.de("3.5"), true),
+                        Presentacion.reconstituir(22L, "Jarra", Dinero.de("12"), false)));
+        when(productos.crear(any())).thenReturn(chicha);
+
+        mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"nombre":"Chicha","categoria":"BEBIDA",
+                 "presentaciones":[{"nombre":"Vaso","precio":3.50}]}
+                """))
+           .andExpect(status().isCreated())
+           .andExpect(jsonPath("$.precio").doesNotExist())
+           .andExpect(jsonPath("$.presentaciones.length()").value(1))
+           .andExpect(jsonPath("$.presentaciones[0].id").value(21))
+           .andExpect(jsonPath("$.presentaciones[0].nombre").value("Vaso"))
+           .andExpect(jsonPath("$.presentaciones[0].precio").value(3.50));
+    }
+
+    @Test
+    void crear_presentacionInvalida_400ConElCampoAnidado() throws Exception {
+        mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"nombre":"Chicha","categoria":"BEBIDA",
+                 "presentaciones":[{"nombre":"","precio":-1}]}
+                """))
+           .andExpect(status().isBadRequest())
+           .andExpect(jsonPath("$.fields[?(@.campo == 'presentaciones[0].nombre')]").exists())
+           .andExpect(jsonPath("$.fields[?(@.campo == 'presentaciones[0].precio')]").exists());
+        verifyNoInteractions(productos);
+    }
+
+    @Test
+    void crear_bebidaSinPresentaciones_422() throws Exception {
+        when(productos.crear(any()))
+                .thenThrow(new ReglaNegocioException("PRESENTACION_REQUERIDA", "Falta presentacion"));
+
+        mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Chicha\",\"categoria\":\"BEBIDA\"}"))
+           .andExpect(status().isUnprocessableEntity())
+           .andExpect(jsonPath("$.code").value("PRESENTACION_REQUERIDA"));
     }
 
     // ---- PUT --------------------------------------------------------------------------------

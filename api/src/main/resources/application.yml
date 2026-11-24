@@ -16,6 +16,7 @@ spring:
       ddl-auto: validate          # el esquema lo maneja solo Flyway
     properties:
       hibernate:
+        default_batch_fetch_size: 100   # evita N+1 al cargar las colecciones de una pagina
         jdbc:
           time_zone: UTC          # se guarda en UTC; se muestra en hora de Lima (ClockConfig)
   flyway:

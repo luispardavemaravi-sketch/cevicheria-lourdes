@@ -1,10 +1,13 @@
 package pe.cevicherialourdes.carta.application.usecase;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pe.cevicherialourdes.carta.domain.model.DefinicionPresentacion;
 import pe.cevicherialourdes.carta.domain.model.Producto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase;
 import pe.cevicherialourdes.carta.domain.port.out.ProductoRepositorio;
@@ -28,7 +31,8 @@ public class GestionarProductosService implements GestionarProductosUseCase {
     @Override
     @Transactional
     public Producto crear(DatosProducto datos) {
-        Producto producto = Producto.crear(datos.nombre(), datos.categoria(), dinero(datos), datos.requiereCocina());
+        Producto producto = Producto.crear(datos.nombre(), datos.categoria(), dinero(datos), datos.requiereCocina(),
+                presentaciones(datos));
         exigirNombreLibre(producto.getNombre(), null);
         Producto guardado = repositorio.guardar(producto);
         log.info("Producto {} creado ({})", guardado.getId(), guardado.getCategoria());
@@ -43,7 +47,7 @@ public class GestionarProductosService implements GestionarProductosUseCase {
                         "El producto " + id + " no existe"));
         exigirNombreLibre(Producto.normalizarNombre(datos.nombre()), id);
         producto.actualizar(datos.nombre(), datos.categoria(), dinero(datos), datos.requiereCocina(),
-                datos.activo() == null || datos.activo());
+                datos.activo() == null || datos.activo(), presentaciones(datos));
         Producto guardado = repositorio.guardar(producto);
         log.info("Producto {} actualizado (activo={})", id, guardado.isActivo());
         return guardado;
@@ -63,5 +67,14 @@ public class GestionarProductosService implements GestionarProductosUseCase {
 
     private static Dinero dinero(DatosProducto datos) {
         return datos.precio() == null ? null : Dinero.de(datos.precio());
+    }
+
+    private static List<DefinicionPresentacion> presentaciones(DatosProducto datos) {
+        if (datos.presentaciones() == null) {
+            return null;
+        }
+        return datos.presentaciones().stream()
+                .map(p -> new DefinicionPresentacion(p.nombre(), p.precio() == null ? null : Dinero.de(p.precio())))
+                .toList();
     }
 }

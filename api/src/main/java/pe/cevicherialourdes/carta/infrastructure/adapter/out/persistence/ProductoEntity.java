@@ -1,7 +1,10 @@
 package pe.cevicherialourdes.carta.infrastructure.adapter.out.persistence;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import pe.cevicherialourdes.carta.domain.model.Categoria;
 import pe.cevicherialourdes.carta.domain.model.Producto;
@@ -41,6 +45,13 @@ class ProductoEntity {
     @Column(nullable = false)
     private boolean activo;
 
+    /**
+     * Sin orphanRemoval: las presentaciones nunca se borran, se desactivan (HU-04).
+     * Se cargan en lote para toda la pagina (hibernate.default_batch_fetch_size), no una consulta por producto.
+     */
+    @OneToMany(mappedBy = "producto", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<PresentacionEntity> presentaciones = new ArrayList<>();
+
     protected ProductoEntity() {
     }
 
@@ -53,11 +64,13 @@ class ProductoEntity {
         e.requiereCocina = p.isRequiereCocina();
         e.disponible = p.isDisponible();
         e.activo = p.isActivo();
+        p.getPresentaciones().forEach(pr -> e.presentaciones.add(PresentacionEntity.desde(pr, e)));
         return e;
     }
 
     Producto aDominio() {
         return Producto.reconstituir(id, nombre, categoria, precio == null ? null : Dinero.de(precio),
-                requiereCocina, disponible, activo);
+                requiereCocina, disponible, activo,
+                presentaciones.stream().map(PresentacionEntity::aDominio).toList());
     }
 }

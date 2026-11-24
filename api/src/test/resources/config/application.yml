@@ -1,0 +1,4 @@
+# Solo pruebas: se suma al application.yml principal (classpath:/config/ tiene prioridad).
+app:
+  jwt:
+    secret: secreto-de-pruebas-con-mas-de-32-bytes-0123456789

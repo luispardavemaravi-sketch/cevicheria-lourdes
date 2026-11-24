@@ -24,6 +24,14 @@ spring:
     time-zone: America/Lima
     default-property-inclusion: non_null
 
+app:
+  jwt:
+    secret: ${JWT_SECRET:}        # obligatorio, >= 32 bytes; sin el la app no arranca
+    expiracion: 8h
+  admin:                          # solo se usan si no existe ningun ADMIN (HU-01)
+    username: ${ADMIN_USERNAME:}
+    pin: ${ADMIN_PIN:}
+
 server:
   error:
     include-stacktrace: never

@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import pe.cevicherialourdes.shared.domain.exception.AccesoBloqueadoException;
 import pe.cevicherialourdes.shared.domain.exception.ConflictoNegocioException;
+import pe.cevicherialourdes.shared.domain.exception.NoAutenticadoException;
 import pe.cevicherialourdes.shared.domain.exception.RecursoNoEncontradoException;
 import pe.cevicherialourdes.shared.domain.exception.ReglaNegocioException;
 
@@ -31,6 +33,16 @@ public class ErrorProbeController {
     @GetMapping("/regla")
     void regla() {
         throw new ReglaNegocioException("TAPER_SOLO_EN_MESA", "El taper solo se cobra en cuentas de mesa");
+    }
+
+    @GetMapping("/no-autenticado")
+    void noAutenticado() {
+        throw new NoAutenticadoException("CREDENCIALES_INVALIDAS", "Usuario o PIN incorrecto");
+    }
+
+    @GetMapping("/bloqueado")
+    void bloqueado() {
+        throw new AccesoBloqueadoException("USUARIO_BLOQUEADO", "Intenta de nuevo en 5 minutos");
     }
 
     @GetMapping("/inesperado")

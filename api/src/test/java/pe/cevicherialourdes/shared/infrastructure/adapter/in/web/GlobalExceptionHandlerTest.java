@@ -60,6 +60,23 @@ class GlobalExceptionHandlerTest {
 
     @Test
     @WithMockUser
+    void noAutenticadoDeNegocio_devuelve401() throws Exception {
+        mvc.perform(get(BASE + "/no-autenticado"))
+           .andExpect(status().isUnauthorized())
+           .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+           .andExpect(jsonPath("$.code").value("CREDENCIALES_INVALIDAS"));
+    }
+
+    @Test
+    @WithMockUser
+    void accesoBloqueado_devuelve423() throws Exception {
+        mvc.perform(get(BASE + "/bloqueado"))
+           .andExpect(status().isLocked())
+           .andExpect(jsonPath("$.code").value("USUARIO_BLOQUEADO"));
+    }
+
+    @Test
+    @WithMockUser
     void dtoInvalido_devuelve400ConLosCamposQueFallaron() throws Exception {
         mvc.perform(post(BASE + "/validacion")
                 .contentType(MediaType.APPLICATION_JSON)

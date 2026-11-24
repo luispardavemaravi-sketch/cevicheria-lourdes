@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -17,14 +18,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import pe.cevicherialourdes.carta.domain.model.Acompanamiento;
 import pe.cevicherialourdes.carta.domain.model.Categoria;
 import pe.cevicherialourdes.carta.domain.model.Producto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.DatosPresentacion;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.DatosProducto;
 import pe.cevicherialourdes.carta.domain.port.in.GestionarProductosUseCase.FiltroProductos;
+import pe.cevicherialourdes.carta.domain.port.out.AcompanamientoRepositorio;
 import pe.cevicherialourdes.carta.domain.port.out.ProductoRepositorio;
 import pe.cevicherialourdes.shared.domain.exception.ConflictoNegocioException;
 import pe.cevicherialourdes.shared.domain.exception.RecursoNoEncontradoException;
+import pe.cevicherialourdes.shared.domain.exception.ReglaNegocioException;
 import pe.cevicherialourdes.shared.domain.model.Dinero;
 import pe.cevicherialourdes.shared.domain.model.Pagina;
 import pe.cevicherialourdes.shared.domain.model.Paginacion;
@@ -33,10 +37,11 @@ import pe.cevicherialourdes.shared.domain.model.Paginacion;
 class GestionarProductosServiceTest {
 
     @Mock ProductoRepositorio repositorio;
+    @Mock AcompanamientoRepositorio acompanamientos;
     @InjectMocks GestionarProductosService servicio;
 
     private static DatosProducto ceviche(String precio) {
-        return new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal(precio), null, null, null);
+        return new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal(precio), null, null, null, null);
     }
 
     @Test
@@ -72,7 +77,7 @@ class GestionarProductosServiceTest {
 
     @Test
     void actualizar_noChocaConsigoMismoPeroSiConOtro() {
-        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true, List.of());
+        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true, List.of(), List.of());
         when(repositorio.buscarPorId(5L)).thenReturn(Optional.of(existente));
         when(repositorio.existeNombre("Ceviche mixto", 5L)).thenReturn(true);
 
@@ -83,13 +88,13 @@ class GestionarProductosServiceTest {
 
     @Test
     void actualizar_aplicaCambiosYGuarda() {
-        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true, List.of());
+        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true, List.of(), List.of());
         when(repositorio.buscarPorId(5L)).thenReturn(Optional.of(existente));
         when(repositorio.existeNombre("Ceviche mixto", 5L)).thenReturn(false);
         when(repositorio.guardar(existente)).thenReturn(existente);
 
         Producto actualizado = servicio.actualizar(5L,
-                new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal("18.00"), true, false, null));
+                new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal("18.00"), true, false, null, null));
 
         assertThat(actualizado.getPrecio()).isEqualTo(Dinero.de("18"));
         assertThat(actualizado.isActivo()).isFalse();
@@ -102,10 +107,51 @@ class GestionarProductosServiceTest {
 
         Producto creado = servicio.crear(new DatosProducto("Chicha morada", Categoria.BEBIDA, null, null, null,
                 List.of(new DatosPresentacion("Vaso", new BigDecimal("3.50")),
-                        new DatosPresentacion("Jarra", new BigDecimal("12")))));
+                        new DatosPresentacion("Jarra", new BigDecimal("12"))), null));
 
         assertThat(creado.presentacionesActivas()).extracting(p -> p.getPrecio())
                 .containsExactly(Dinero.de("3.50"), Dinero.de("12.00"));
+        verifyNoInteractions(acompanamientos);
+    }
+
+    // ---- HU-05 ----------------------------------------------------------------------------
+
+    @Test
+    void crear_platoConAcompanamientos_losResuelveEnElCatalogoPorNombreNormalizado_hu05() {
+        when(repositorio.existeNombre("Ceviche mixto", null)).thenReturn(false);
+        when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(acompanamientos.obtenerOCrear(List.of("Camote", "Porcion de ceviche")))
+                .thenReturn(List.of(new Acompanamiento(1L, "Camote"), new Acompanamiento(9L, "Porcion de ceviche")));
+
+        Producto creado = servicio.crear(new DatosProducto("Ceviche mixto", Categoria.PLATO, new BigDecimal("18"),
+                null, null, null, List.of(" Camote ", "Porcion  de ceviche")));
+
+        assertThat(creado.getAcompanamientos()).extracting(Acompanamiento::id).containsExactly(1L, 9L);
+    }
+
+    @Test
+    void crear_nombresDeAcompanamientoRepetidos_422SinTocarElCatalogo() {
+        assertThatThrownBy(() -> servicio.crear(new DatosProducto("Ceviche mixto", Categoria.PLATO,
+                new BigDecimal("18"), null, null, null, List.of("Camote", "camote"))))
+                .isInstanceOf(ReglaNegocioException.class)
+                .extracting("codigo").isEqualTo("ACOMPANAMIENTO_DUPLICADO");
+        verifyNoInteractions(acompanamientos);
+        verify(repositorio, never()).guardar(any());
+    }
+
+    @Test
+    void actualizar_sinAcompanamientos_dejaElPlatoSinNinguno() {
+        Producto existente = Producto.reconstituir(5L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true,
+                List.of(), List.of(new Acompanamiento(1L, "Camote")));
+        when(repositorio.buscarPorId(5L)).thenReturn(Optional.of(existente));
+        when(repositorio.existeNombre("Ceviche", 5L)).thenReturn(false);
+        when(repositorio.guardar(existente)).thenReturn(existente);
+
+        servicio.actualizar(5L, new DatosProducto("Ceviche", Categoria.PLATO, new BigDecimal("15"), null, true,
+                null, null));
+
+        assertThat(existente.getAcompanamientos()).isEmpty();
+        verifyNoInteractions(acompanamientos);
     }
 
     @Test

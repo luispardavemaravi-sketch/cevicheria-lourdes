@@ -26,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import pe.cevicherialourdes.carta.domain.model.Acompanamiento;
 import pe.cevicherialourdes.carta.domain.model.Categoria;
 import pe.cevicherialourdes.carta.domain.model.Presentacion;
 import pe.cevicherialourdes.carta.domain.model.Producto;
@@ -52,7 +53,7 @@ class ProductoControllerTest {
     @MockitoBean GestionarProductosUseCase productos;
 
     private static Producto ceviche() {
-        return Producto.reconstituir(10L, "Ceviche mixto", Categoria.PLATO, Dinero.de("18"), true, true, true, List.of());
+        return Producto.reconstituir(10L, "Ceviche mixto", Categoria.PLATO, Dinero.de("18"), true, true, true, List.of(), List.of());
     }
 
     // ---- POST -------------------------------------------------------------------------------
@@ -134,7 +135,7 @@ class ProductoControllerTest {
     void crear_bebidaConPresentaciones_lasDevuelveConSuIdYPrecio_hu04() throws Exception {
         Producto chicha = Producto.reconstituir(11L, "Chicha", Categoria.BEBIDA, null, false, true, true,
                 List.of(Presentacion.reconstituir(21L, "Vaso", Dinero.de("3.5"), true),
-                        Presentacion.reconstituir(22L, "Jarra", Dinero.de("12"), false)));
+                        Presentacion.reconstituir(22L, "Jarra", Dinero.de("12"), false)), List.of());
         when(productos.crear(any())).thenReturn(chicha);
 
         mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content("""
@@ -170,6 +171,46 @@ class ProductoControllerTest {
                 .content("{\"nombre\":\"Chicha\",\"categoria\":\"BEBIDA\"}"))
            .andExpect(status().isUnprocessableEntity())
            .andExpect(jsonPath("$.code").value("PRESENTACION_REQUERIDA"));
+    }
+
+    @Test
+    void crear_platoConAcompanamientos_losDevuelveConSuId_hu05() throws Exception {
+        Producto ceviche = Producto.reconstituir(12L, "Ceviche", Categoria.PLATO, Dinero.de("15"), true, true, true,
+                List.of(), List.of(new Acompanamiento(1L, "Camote"), new Acompanamiento(2L, "Cebolla")));
+        when(productos.crear(any())).thenReturn(ceviche);
+
+        mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"nombre":"Ceviche","categoria":"PLATO","precio":15,"acompanamientos":["Camote","Cebolla"]}
+                """))
+           .andExpect(status().isCreated())
+           .andExpect(jsonPath("$.acompanamientos.length()").value(2))
+           .andExpect(jsonPath("$.acompanamientos[0].id").value(1))
+           .andExpect(jsonPath("$.acompanamientos[0].nombre").value("Camote"))
+           .andExpect(jsonPath("$.acompanamientos[0].precio").doesNotExist());
+    }
+
+    @Test
+    void crear_acompanamientoVacioODemasiadoLargo_400() throws Exception {
+        mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content(
+                "{\"nombre\":\"Ceviche\",\"categoria\":\"PLATO\",\"precio\":15,\"acompanamientos\":[\"\",\""
+                        + "x".repeat(41) + "\"]}"))
+           .andExpect(status().isBadRequest())
+           .andExpect(jsonPath("$.fields[?(@.campo == 'acompanamientos[0]')]").exists())
+           .andExpect(jsonPath("$.fields[?(@.campo == 'acompanamientos[1]')]").exists());
+        verifyNoInteractions(productos);
+    }
+
+    @Test
+    void crear_bebidaConAcompanamientos_422() throws Exception {
+        when(productos.crear(any()))
+                .thenThrow(new ReglaNegocioException("ACOMPANAMIENTO_SOLO_EN_PLATO", "Solo platos"));
+
+        mvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"nombre":"Chicha","categoria":"BEBIDA","presentaciones":[{"nombre":"Vaso","precio":3}],
+                 "acompanamientos":["Hielo"]}
+                """))
+           .andExpect(status().isUnprocessableEntity())
+           .andExpect(jsonPath("$.code").value("ACOMPANAMIENTO_SOLO_EN_PLATO"));
     }
 
     // ---- PUT --------------------------------------------------------------------------------

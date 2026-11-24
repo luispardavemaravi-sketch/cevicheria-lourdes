@@ -33,3 +33,8 @@ Una línea por decisión no obvia. Formato: `[historia] decisión — por qué`.
 - [HU-04] `Producto.precioPara(presentacionId)` concentra "pedir una bebida exige presentación" (422 `PRESENTACION_REQUERIDA` / `PRESENTACION_NO_VALIDA` / `PRESENTACION_NO_APLICA`) — HU-07 solo lo llama al congelar el precio (RN-02); la regla vive en el dominio, no en el controller.
 - [HU-04] `hibernate.default_batch_fetch_size=100` — al listar una página de productos las presentaciones se cargan en una consulta `IN (...)` y no una por producto (N+1).
 - [HU-04] La respuesta solo muestra presentaciones activas, ordenadas por precio — es lo que el mozo puede vender; las inactivas solo importan para el historial.
+- [HU-05] Acompañamientos como catálogo compartido resuelto por nombre sin mayúsculas (se crean si no existen) + índice único `lower(nombre)` en V5 — decidido con el usuario (por nombre en el cuerpo del producto); el índice evita duplicados por carrera, como V3.
+- [HU-05] Solo un PLATO tiene acompañamientos (422 `ACOMPANAMIENTO_SOLO_EN_PLATO`); nombres repetidos → 422 `ACOMPANAMIENTO_DUPLICADO` — mismas reglas y mismo estilo que las presentaciones de HU-04.
+- [HU-05] En PUT la lista es la completa; si se omite, el plato queda sin acompañamientos — semántica de reemplazo total coherente con PUT; se documenta en Swagger.
+- [HU-05] Si una regla falla después de crear acompañamientos nuevos, el rollback de la transacción los deshace (probado en `ProductosIT`) — se prefirió eso a duplicar el chequeo de categoría antes de resolver el catálogo.
+- [HU-05] `ProductoEntity` recibe los acompañamientos como `getReferenceById` (proxies gestionados), sin cascada — se evita depender de cómo Hibernate trata entidades detached en un `@ManyToMany` al hacer persist/merge.

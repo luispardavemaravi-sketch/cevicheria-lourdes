@@ -15,6 +15,7 @@ import pe.cevicherialourdes.shared.domain.model.Dinero;
  * <ul>
  *   <li>HU-03: nombre unico (lo verifica el caso de uso), precio &gt; 0, categoria inmutable, baja logica.</li>
  *   <li>HU-04: las BEBIDAS no tienen precio propio; lo tiene cada presentacion (al menos una activa).</li>
+ *   <li>HU-05: solo los PLATOS tienen acompanamientos (sin precio).</li>
  * </ul>
  */
 public class Producto {
@@ -34,9 +35,12 @@ public class Producto {
     private boolean activo;
     /** Todas, incluidas las inactivas (se conservan por los pedidos viejos). */
     private final List<Presentacion> presentaciones;
+    /** HU-05: solo en PLATO; ordenados por nombre. */
+    private List<Acompanamiento> acompanamientos;
 
     private Producto(Long id, String nombre, Categoria categoria, Dinero precio, boolean requiereCocina,
-                     boolean disponible, boolean activo, List<Presentacion> presentaciones) {
+                     boolean disponible, boolean activo, List<Presentacion> presentaciones,
+                     List<Acompanamiento> acompanamientos) {
         this.id = id;
         this.nombre = nombre;
         this.categoria = Objects.requireNonNull(categoria, "categoria");
@@ -45,6 +49,7 @@ public class Producto {
         this.disponible = disponible;
         this.activo = activo;
         this.presentaciones = new ArrayList<>(presentaciones);
+        this.acompanamientos = ordenados(acompanamientos);
     }
 
     /**
@@ -58,16 +63,40 @@ public class Producto {
         validarPrecio(categoria, precio);
         validarPresentaciones(categoria, presentaciones);
         Producto producto = new Producto(null, nombreValido, categoria, precio,
-                requiereCocina != null ? requiereCocina : categoria.requiereCocinaPorDefecto(), true, true, List.of());
+                requiereCocina != null ? requiereCocina : categoria.requiereCocinaPorDefecto(), true, true, List.of(),
+                List.of());
         producto.aplicarPresentaciones(presentaciones);
         return producto;
     }
 
     public static Producto reconstituir(Long id, String nombre, Categoria categoria, Dinero precio,
                                         boolean requiereCocina, boolean disponible, boolean activo,
-                                        List<Presentacion> presentaciones) {
+                                        List<Presentacion> presentaciones,
+                                        List<Acompanamiento> acompanamientos) {
         return new Producto(Objects.requireNonNull(id, "id"), nombre, categoria, precio, requiereCocina,
-                disponible, activo, presentaciones);
+                disponible, activo, presentaciones, acompanamientos);
+    }
+
+    /**
+     * HU-05: reemplaza los acompanamientos del plato (ya resueltos en el catalogo). Solo un PLATO puede tenerlos.
+     */
+    public void asignarAcompanamientos(List<Acompanamiento> nuevos) {
+        List<Acompanamiento> lista = nuevos == null ? List.of() : nuevos;
+        if (!lista.isEmpty() && categoria != Categoria.PLATO) {
+            throw new ReglaNegocioException("ACOMPANAMIENTO_SOLO_EN_PLATO", "Solo los platos tienen acompanamientos");
+        }
+        Set<Long> ids = new HashSet<>();
+        for (Acompanamiento a : lista) {
+            if (!ids.add(a.id())) {
+                throw new ReglaNegocioException("ACOMPANAMIENTO_DUPLICADO",
+                        "El acompanamiento '" + a.nombre() + "' esta repetido");
+            }
+        }
+        this.acompanamientos = ordenados(lista);
+    }
+
+    private static List<Acompanamiento> ordenados(List<Acompanamiento> lista) {
+        return lista.stream().sorted(Comparator.comparing(Acompanamiento::nombre)).toList();
     }
 
     /**
@@ -220,6 +249,10 @@ public class Producto {
     }
 
     /** Las que se pueden pedir, de la mas barata a la mas cara. */
+    public List<Acompanamiento> getAcompanamientos() {
+        return acompanamientos;
+    }
+
     public List<Presentacion> presentacionesActivas() {
         return presentaciones.stream().filter(Presentacion::isActivo).sorted(POR_PRECIO).toList();
     }

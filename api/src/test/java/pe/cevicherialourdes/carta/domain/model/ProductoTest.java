@@ -70,7 +70,7 @@ class ProductoTest {
 
     @Test
     void actualizar_cambiaDatosYPermiteDesactivar() {
-        Producto p = Producto.reconstituir(3L, "Chilcano", Categoria.PLATO, Dinero.de("6"), true, true, true, List.of());
+        Producto p = Producto.reconstituir(3L, "Chilcano", Categoria.PLATO, Dinero.de("6"), true, true, true, List.of(), List.of());
 
         p.actualizar("Chilcano especial", Categoria.PLATO, Dinero.de("8"), true, false, null);
 
@@ -81,7 +81,7 @@ class ProductoTest {
 
     @Test
     void actualizar_noPermiteCambiarLaCategoria() {
-        Producto p = Producto.reconstituir(3L, "Chilcano", Categoria.PLATO, Dinero.de("6"), true, true, true, List.of());
+        Producto p = Producto.reconstituir(3L, "Chilcano", Categoria.PLATO, Dinero.de("6"), true, true, true, List.of(), List.of());
 
         assertThatThrownBy(() -> p.actualizar("Chilcano", Categoria.BEBIDA, null, null, true, null))
                 .isInstanceOf(ReglaNegocioException.class)
@@ -90,7 +90,7 @@ class ProductoTest {
 
     @Test
     void actualizar_validaIgualQueAlCrear() {
-        Producto p = Producto.reconstituir(3L, "Chilcano", Categoria.PLATO, Dinero.de("6"), true, true, true, List.of());
+        Producto p = Producto.reconstituir(3L, "Chilcano", Categoria.PLATO, Dinero.de("6"), true, true, true, List.of(), List.of());
 
         assertThatThrownBy(() -> p.actualizar("Chilcano", Categoria.PLATO, Dinero.de("0"), null, true, null))
                 .extracting("codigo").isEqualTo("PRECIO_INVALIDO");
